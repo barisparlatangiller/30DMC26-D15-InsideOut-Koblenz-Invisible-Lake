@@ -1,51 +1,98 @@
-"""Grey basemap (CARTO Positron, no labels; © OpenStreetMap contributors © CARTO), reprojected to EPSG:25832.
-box: the 30 km 3D area at ~3.7 m/px (8192 px). ctx: 150 km context at 50 m/px (3000 px). Runs in GitHub Actions."""
-import io, math, os, time, requests, numpy as np
-from PIL import Image
+"""Grey basemap rendered from OpenStreetMap (© OpenStreetMap contributors, ODbL) in EPSG:25832.
+Styled like a light, Positron-type map (Day 5 design language). Runs in GitHub Actions after
+osmium has extracted and exported the data (see .github/workflows/basemap.yml).
+Outputs (docs/data): base_8k.jpg / base.jpg  = 30 km 3D box (3.7 / 7.3 m per px)
+                     base_core_8k.jpg / base_core.jpg = 8 km Koblenz core (1 / 2 m per px)
+                     base_ctx.jpg = 150 km flat context (50 m per px)"""
+import json, os, sys
+import numpy as np
+from PIL import Image, ImageDraw
 from pyproj import Transformer
 Image.MAX_IMAGE_PIXELS = None
 OUT = "docs/data"; os.makedirs(OUT, exist_ok=True)
-T = Transformer.from_crs(25832, 4326, always_xy=True)
-S = requests.Session(); S.headers["User-Agent"] = "30DayMapChallenge Day15 (github.com/barisparlatangiller)"
+T = Transformer.from_crs(4326, 25832, always_xy=True)
 
-def tile(z, x, y):
-    for a in range(6):
-        try:
-            r = S.get(f"https://{'abcd'[(x+y)%4]}.basemaps.cartocdn.com/light_nolabels/{z}/{x}/{y}.png", timeout=60)
-            if r.ok: return Image.open(io.BytesIO(r.content)).convert("RGB")
-        except Exception as e: print("retry", e)
-        time.sleep(2*(a+1))
-    raise SystemExit(f"tile failed {z}/{x}/{y}")
+C = dict(bg="#f2efe9", res="#ebe6df", ind="#e6e1da", farm="#f2efe9", forest="#dde3d3", grass="#e4e9da",
+         water="#c6d4dd", river="#c6d4dd", bld="#d6cfc4", bld_line="#c4bcb0", casing="#d3cdc3", road="#ffffff",
+         major="#fdfbf7", rail="#b9b3aa", cemetery="#e1e4d8", vine="#e9e6d6")
+ROADS = {"motorway": 7, "trunk": 6, "primary": 5, "secondary": 4.2, "tertiary": 3.4, "motorway_link": 3, "trunk_link": 3,
+         "primary_link": 3, "secondary_link": 2.6, "tertiary_link": 2.4, "residential": 2.2, "unclassified": 2.2,
+         "living_street": 2, "pedestrian": 2, "service": 1.2}
 
-def merc(lon, lat, z):
-    n = 2**z * 512
-    return (lon + 180) / 360 * n, (1 - math.log(math.tan(math.radians(lat)) + 1/math.cos(math.radians(lat))) / math.pi) / 2 * n
+def load(path):
+    feats = []
+    with open(path) as f:
+        for line in f:
+            line = line.strip().lstrip("\x1e")
+            if line: feats.append(json.loads(line))
+    print(path, len(feats), flush=True)
+    return feats
 
-TS = 256
-def build(x0, y0, x1, y1, px, z, name, q=88):
-    E = x0 + (np.arange(px) + 0.5) * (x1 - x0) / px; N = y1 - (np.arange(px) + 0.5) * (y1 - y0) / px
-    EE, NN = np.meshgrid(E, N); lon, lat = T.transform(EE, NN)
-    n = 2**z * TS
-    mx = (lon + 180) / 360 * n
-    my = (1 - np.log(np.tan(np.radians(lat)) + 1/np.cos(np.radians(lat))) / np.pi) / 2 * n
-    tx0, tx1 = int(mx.min() // TS), int(mx.max() // TS); ty0, ty1 = int(my.min() // TS), int(my.max() // TS)
-    print(name, "tiles", (tx1-tx0+1)*(ty1-ty0+1), flush=True)
-    M = np.zeros(((ty1-ty0+1)*TS, (tx1-tx0+1)*TS, 3), np.uint8)
-    from concurrent.futures import ThreadPoolExecutor
-    jobs = [(tx, ty) for ty in range(ty0, ty1+1) for tx in range(tx0, tx1+1)]
-    with ThreadPoolExecutor(8) as ex: imgs = list(ex.map(lambda a: tile(z, *a), jobs))
-    for (tx, ty), im in zip(jobs, imgs):
-        if True:
-            M[(ty-ty0)*TS:(ty-ty0+1)*TS, (tx-tx0)*TS:(tx-tx0+1)*TS] = np.asarray(im.resize((TS, TS)))
-    o = np.zeros((px, px, 3), np.uint8)
-    for r0 in range(0, px, 512):
-        fx = mx[r0:r0+512] - tx0*TS - 0.5; fy = my[r0:r0+512] - ty0*TS - 0.5
-        ix = np.clip(fx.astype(int), 0, M.shape[1]-2); iy = np.clip(fy.astype(int), 0, M.shape[0]-2)
-        u = (fx - ix)[..., None].astype(np.float32); v = (fy - iy)[..., None].astype(np.float32)
-        o[r0:r0+512] = (M[iy, ix]*(1-u)*(1-v) + M[iy, ix+1]*u*(1-v) + M[iy+1, ix]*(1-u)*v + M[iy+1, ix+1]*u*v).astype(np.uint8)
-    Image.fromarray(o).save(f"{OUT}/{name}.jpg", quality=q, optimize=True)
+def project(coords):
+    a = np.asarray(coords, dtype=float)
+    x, y = T.transform(a[:, 0], a[:, 1]); return np.stack([x, y], 1)
 
-build(385000, 5565000, 415000, 5595000, 8192, 15, "base_8k")
-im = Image.open(f"{OUT}/base_8k.jpg"); im.resize((4096, 4096), Image.LANCZOS).save(f"{OUT}/base.jpg", quality=88, optimize=True)
-build(325000, 5505000, 475000, 5655000, 3000, 12, "base_ctx")
+class Canvas:
+    def __init__(s, x0, y0, x1, y1, px, scale=1.0):
+        s.x0, s.y1, s.mpp, s.k = x0, y1, (x1 - x0) / px, scale
+        s.img = Image.new("RGB", (px, px), C["bg"]); s.d = ImageDraw.Draw(s.img)
+    def pix(s, xy): return list(zip(((xy[:, 0] - s.x0) / s.mpp).tolist(), ((s.y1 - xy[:, 1]) / s.mpp).tolist()))
+    def poly(s, rings, fill, outline=None, hole=None):
+        ext = s.pix(project(rings[0]))
+        if len(ext) >= 3: s.d.polygon(ext, fill=fill, outline=outline)
+        for r in rings[1:]:
+            p = s.pix(project(r))
+            if len(p) >= 3: s.d.polygon(p, fill=hole or C["bg"])
+    def line(s, coords, fill, w):
+        p = s.pix(project(coords))
+        if len(p) >= 2: s.d.line(p, fill=fill, width=max(1, round(w * s.k)), joint="curve")
+
+def polys(g):
+    if g["type"] == "Polygon": return [g["coordinates"]]
+    if g["type"] == "MultiPolygon": return g["coordinates"]
+    return []
+
+def lines(g):
+    if g["type"] == "LineString": return [g["coordinates"]]
+    if g["type"] == "MultiLineString": return g["coordinates"]
+    return []
+
+def render(feats, cv, buildings=True, minor=True):
+    P = lambda f: f.get("properties", {})
+    def layer(test, fill, outline=None, hole=None):
+        for f in feats:
+            if test(P(f)):
+                for rings in polys(f["geometry"]): cv.poly(rings, fill, outline, hole)
+    layer(lambda p: p.get("landuse") in ("residential",), C["res"], hole=C["res"])
+    layer(lambda p: p.get("landuse") in ("industrial", "commercial", "retail", "railway"), C["ind"], hole=C["ind"])
+    layer(lambda p: p.get("landuse") == "vineyard", C["vine"])
+    layer(lambda p: p.get("landuse") in ("meadow", "grass", "recreation_ground", "allotments") or p.get("leisure") in ("park", "garden", "pitch", "golf_course") , C["grass"])
+    layer(lambda p: p.get("landuse") == "cemetery", C["cemetery"])
+    layer(lambda p: p.get("landuse") == "forest" or p.get("natural") == "wood", C["forest"], hole=C["bg"])
+    layer(lambda p: p.get("natural") == "water" or p.get("waterway") == "riverbank" or p.get("landuse") == "basin", C["water"], hole=C["bg"])
+    for f in feats:
+        p = P(f)
+        if p.get("waterway") in ("river", "canal"): [cv.line(c, C["river"], 4) for c in lines(f["geometry"])]
+        elif p.get("waterway") == "stream" and minor: [cv.line(c, C["river"], 1.4) for c in lines(f["geometry"])]
+    if buildings:
+        layer(lambda p: "building" in p and p.get("building") != "no", C["bld"], C["bld_line"], hole=C["res"])
+    rd = [(f, ROADS[P(f)["highway"]]) for f in feats if P(f).get("highway") in ROADS and (minor or ROADS[P(f)["highway"]] >= 3.4)]
+    rd.sort(key=lambda t: t[1])
+    for f, w in rd: [cv.line(c, C["casing"], w + 1.6) for c in lines(f["geometry"])]
+    for f, w in rd: [cv.line(c, C["major"] if w >= 4 else C["road"], w) for c in lines(f["geometry"])]
+    for f in feats:
+        if P(f).get("railway") in ("rail",) and P(f).get("service") is None:
+            [cv.line(c, C["rail"], 1.6) for c in lines(f["geometry"])]
+
+box = load("box.geojsonseq")
+cv = Canvas(385000, 5565000, 415000, 5595000, 8192, 1.0); render(box, cv)
+cv.img.save(f"{OUT}/base_8k.jpg", quality=88, optimize=True)
+cv.img.resize((4096, 4096), Image.LANCZOS).save(f"{OUT}/base.jpg", quality=88, optimize=True)
+cv = Canvas(396000, 5574000, 404000, 5582000, 8192, 2.6); render(box, cv)
+cv.img.save(f"{OUT}/base_core_8k.jpg", quality=88, optimize=True)
+cv.img.resize((4096, 4096), Image.LANCZOS).save(f"{OUT}/base_core.jpg", quality=88, optimize=True)
+del box
+ctx = load("ctx.geojsonseq")
+cv = Canvas(325000, 5505000, 475000, 5655000, 3000, 0.5); render(ctx, cv, buildings=False, minor=False)
+cv.img.save(f"{OUT}/base_ctx.jpg", quality=88, optimize=True)
 print("done")

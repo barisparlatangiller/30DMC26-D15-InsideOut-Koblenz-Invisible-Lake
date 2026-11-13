@@ -8,17 +8,34 @@ permissions:
 jobs:
   basemap:
     runs-on: ubuntu-latest
-    timeout-minutes: 60
+    timeout-minutes: 90
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
         with: { python-version: '3.12' }
-      - run: pip install pillow requests numpy pyproj
+      - run: sudo apt-get update -qq && sudo apt-get install -y -qq osmium-tool
+      - run: pip install pillow numpy pyproj
+      - name: OpenStreetMap extracts (Geofabrik)
+        run: |
+          set -e
+          for r in europe/germany/rheinland-pfalz europe/germany/hessen europe/germany/nordrhein-westfalen/koeln-regbez; do
+            wget -q "https://download.geofabrik.de/${r}-latest.osm.pbf" -O "$(basename $r).pbf"
+          done
+          osmium merge rheinland-pfalz.pbf hessen.pbf koeln-regbez.pbf -o all.pbf
+          # 3D box (+ margin) with buildings and minor roads
+          osmium extract -b 7.33,50.19,7.87,50.53 all.pbf -o box.pbf
+          osmium tags-filter box.pbf nwr/building w/highway w/railway nwr/natural=water,wood w/waterway nwr/landuse nwr/leisure -o boxf.pbf
+          osmium export boxf.pbf -f geojsonseq -o box.geojsonseq --geometry-types=linestring,polygon
+          # 150 km context, no buildings
+          osmium extract -b 6.40,49.65,8.65,51.06 all.pbf -o ctx.pbf
+          osmium tags-filter ctx.pbf w/highway=motorway,trunk,primary,secondary,tertiary,motorway_link,trunk_link w/railway=rail nwr/natural=water,wood w/waterway=river,canal nwr/landuse=forest,residential,industrial,commercial -o ctxf.pbf
+          osmium export ctxf.pbf -f geojsonseq -o ctx.geojsonseq --geometry-types=linestring,polygon
+          ls -la *.geojsonseq
       - run: python pipeline/basemap.py
       - name: commit
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git add docs/data/base*.jpg
-          git commit -m "Grey basemap textures (CARTO Positron, OSM)" || echo "nothing"
+          git commit -m "Grey basemap rendered from OpenStreetMap" || echo "nothing"
           git pull --rebase && git push
