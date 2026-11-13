@@ -1,0 +1,61 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>The Invisible Lake · Koblenz</title>
+<meta name="description" content="Two hours after sunset, cold air drains from the Hunsrück and Westerwald into the Rhine and Moselle valleys and fills Koblenz like a lake. 3D map from the DWD/LfU RLP cold-air model.">
+<link rel="stylesheet" href="style.css">
+<script type="importmap">{"imports":{"three":"https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js","three/addons/":"https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/"}}</script>
+</head>
+<body>
+<canvas id="c"></canvas>
+
+<header id="hd">
+  <div class="kicker">#30DayMapChallenge · Day 15 · Inside out</div>
+  <h1>The Invisible Lake</h1>
+  <p class="lede">Two hours after sunset, cold air slides off the Hunsrück and Westerwald and pools in the Rhine and Moselle valleys. Koblenz sits at the bottom of a lake you cannot see.</p>
+</header>
+
+<aside id="panel">
+  <div class="stat"><b id="sRes">–</b><span>of Koblenz's residential land lies under ≥ 20 m of cold air</span></div>
+  <div class="stat"><b id="sMax">–</b><span>deepest cold air inside the city</span></div>
+
+  <div class="grp">
+    <label class="tg"><input type="checkbox" id="tLake" checked> Cold-air lake</label>
+    <label class="tg"><input type="checkbox" id="tFlow" checked> Flow (modelled speed × 300)</label>
+    <label class="tg"><input type="checkbox" id="tBld" checked> Buildings (LoD2)</label>
+    <label class="tg"><input type="checkbox" id="tRes"> Residential areas</label>
+    <label class="tg"><input type="checkbox" id="tNight"> Satellite night temperature</label>
+    <label class="tg"><input type="checkbox" id="tLeg"> Colour lake by depth (LfU legend)</label>
+  </div>
+  <div class="grp">
+    <label class="sl">Lake fill <input type="range" id="rK" min="0" max="1" step="0.01" value="1"></label>
+    <label class="sl">Transparency <input type="range" id="rOp" min="0.15" max="1" step="0.01" value="0.8"></label>
+    <label class="sl">Vertical exaggeration <span id="exv">1.8×</span><input type="range" id="rEx" min="1" max="3" step="0.1" value="1.8"></label>
+  </div>
+  <div class="grp row">
+    <button id="bSec">✂ Cross-section</button>
+    <button id="bEck">Deutsches Eck</button>
+    <button id="bAll">Whole valley</button>
+  </div>
+  <div id="legend"></div>
+</aside>
+
+<div id="info" hidden></div>
+<div id="sec" hidden><canvas id="secC" width="760" height="220"></canvas><div class="sx"><span id="secT"></span><button id="secX">×</button></div></div>
+
+<footer id="ft">
+  Cold air: ORKA-DE 50 m model (DWD) via LfU Rheinland-Pfalz, 2 h after sunset, clear and calm night, CC BY 4.0 ·
+  Terrain DGM, buildings LoD2, land use Basis-DLM: © GeoBasis-DE / LVermGeo RP, dl-de/by-2.0 ·
+  Night surface temperature: LfU RLP Cold-/Hot-Spots, 6 Aug 2024 ·
+  Built by Barış Parlatangiller with Claude (AI) ·
+  <a href="https://github.com/barisparlatangiller/30DMC26-D15-InsideOut-Koblenz-Invisible-Lake">Code &amp; method</a>
+</footer>
+
+<div id="film" hidden><div id="fq"></div><div id="fa"></div><div id="fc"></div><div id="fs"></div></div>
+<div id="load">Filling the valley…</div>
+
+<script type="module" src="app.js"></script>
+</body>
+</html>
