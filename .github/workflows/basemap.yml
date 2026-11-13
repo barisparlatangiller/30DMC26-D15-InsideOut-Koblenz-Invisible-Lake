@@ -23,11 +23,11 @@ jobs:
           done
           osmium merge rheinland-pfalz.pbf hessen.pbf koeln-regbez.pbf -o all.pbf
           # 3D box (+ margin) with buildings and minor roads
-          osmium extract -b 7.33,50.19,7.87,50.53 all.pbf -o box.pbf
+          osmium extract -s smart -b 7.33,50.19,7.87,50.53 all.pbf -o box.pbf
           osmium tags-filter box.pbf nwr/building w/highway w/railway nwr/natural=water,wood w/waterway nwr/landuse nwr/leisure -o boxf.pbf
           osmium export boxf.pbf -f geojsonseq -o box.geojsonseq --geometry-types=linestring,polygon
           # 150 km context, no buildings
-          osmium extract -b 6.40,49.65,8.65,51.06 all.pbf -o ctx.pbf
+          osmium extract -s smart -b 6.40,49.65,8.65,51.06 all.pbf -o ctx.pbf
           osmium tags-filter ctx.pbf w/highway=motorway,trunk,primary,secondary,tertiary,motorway_link,trunk_link w/railway=rail nwr/natural=water,wood w/waterway=river,canal nwr/landuse=forest,residential,industrial,commercial -o ctxf.pbf
           osmium export ctxf.pbf -f geojsonseq -o ctx.geojsonseq --geometry-types=linestring,polygon
           ls -la *.geojsonseq
