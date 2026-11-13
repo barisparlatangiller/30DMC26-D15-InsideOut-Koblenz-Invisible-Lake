@@ -1,0 +1,24 @@
+name: basemap
+on:
+  workflow_dispatch:
+  push:
+    paths: ['pipeline/basemap.py', '.github/workflows/basemap.yml']
+permissions:
+  contents: write
+jobs:
+  basemap:
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with: { python-version: '3.12' }
+      - run: pip install pillow requests numpy pyproj
+      - run: python pipeline/basemap.py
+      - name: commit
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add docs/data/base*.jpg
+          git commit -m "Grey basemap textures (CARTO Positron, OSM)" || echo "nothing"
+          git pull --rebase && git push
