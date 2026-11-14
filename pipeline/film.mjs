@@ -46,8 +46,9 @@ const plan = await p.evaluate(({ FPS, FROM }) => {
     F.set(o); F.step(1 / FPS);
   };
   F.warm(4);
-  // advance particle clock to FROM so shards line up
-  for (let f = 0; f < FROM; f++) F.S.k = 0;
+  // particles are deterministic (seeded); replay the frames before FROM without rendering so shards line up
+  window.__kAt = (fr) => { const t = fr / FPS; return t < 2 ? 0 : t > 6.5 ? 1 : ease((t - 2)/4.5); };
+  for (let f = 0; f < FROM; f++) F.advance(window.__kAt(f), 1 / FPS);
   return { HECK };
 }, { FPS, FROM });
 console.log('heck', plan.HECK);

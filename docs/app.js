@@ -19,6 +19,7 @@ const FLOW = [[10,'#09e7ff','moderate 10–20'],[20,'#0076fe','high 20–30'],[3
 // LfU RLP legend: night anomaly
 const NIGHT = [[-4,'#0850b4'],[-3,'#016bff'],[-2,'#1eb7fe'],[-1,'#b1faff'],[0,'#f4f1ea'],[1,'#ffe2a7'],[2,'#ff874b'],[3,'#ff0134'],[4,'#82000d']];
 
+if (FILM) { let a = 20261115; Math.random = () => { a |= 0; a = a + 0x6D2B79F5 | 0; let t = Math.imul(a ^ a >>> 15, 1 | a); t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t; return ((t ^ t >>> 14) >>> 0) / 4294967296; }; }
 const S = { k: 1, op: 0.68, ex: 1.8, t: 0, secMode: false, base: 'map' };
 window.S = S;
 
@@ -63,7 +64,9 @@ const scene = new THREE.Scene();
 const camera = new THREE.PerspectiveCamera(38, 1, 20, 300000);
 const controls = new MapControls(camera, canvas);
 controls.enableDamping = !FILM; controls.maxPolarAngle = 1.42; controls.minDistance = 250; controls.maxDistance = 80000;
-function resize() { renderer.setSize(innerWidth, innerHeight, false); camera.aspect = innerWidth / innerHeight; camera.updateProjectionMatrix(); }
+function resize() { renderer.setSize(innerWidth, innerHeight, false); camera.aspect = innerWidth / innerHeight;
+  if (!FILM && innerWidth > 760) camera.setViewOffset(innerWidth, innerHeight, -192, 0, innerWidth, innerHeight); else camera.clearViewOffset();
+  camera.updateProjectionMatrix(); }
 addEventListener('resize', resize); resize();
 
 const world = new THREE.Group(); scene.add(world);
@@ -460,5 +463,6 @@ window.Film = {
     for (const id of ['fq', 'fa', 'fc', 'fs']) if (o[id+'o'] !== undefined) $(id).style.opacity = o[id+'o'];
   },
   warm(sec) { for (let t = 0; t < sec; t += 1/30) stepParticles(1/30); },
+  advance(k, dt) { S.k = k; lakeMat.uniforms.k.value = k; S.t += dt; stepParticles(Math.min(dt, 0.05)); },
   step(dt) { frame(dt); }
 };
