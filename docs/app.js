@@ -381,6 +381,7 @@ $('tCon').onchange = e => terrainMat.uniforms.showCon.value = e.target.checked ?
 $('tRes').onchange = e => terrainMat.uniforms.showRes.value = e.target.checked ? 1 : 0;
 $('tNight').onchange = e => terrainMat.uniforms.showNight.value = e.target.checked ? 1 : 0;
 $('rK').oninput = e => { S.k = +e.target.value; lakeMat.uniforms.k.value = S.k; $('kO').textContent = S.k > 0.99 ? '2 h' : Math.round(S.k*100)+'%'; };
+$('rThr').oninput = e => { S.thr = +e.target.value; lakeMat.uniforms.thr.value = S.thr; $('thrO').textContent = S.thr + ' m'; };
 $('rOp').oninput = e => { S.op = +e.target.value; lakeMat.uniforms.op.value = S.op; $('opO').textContent = Math.round(S.op*100)+'%'; };
 $('rEx').oninput = e => { S.ex = +e.target.value; applyEx(); };
 $('bEck').onclick = () => setView(VIEWS.eck);
