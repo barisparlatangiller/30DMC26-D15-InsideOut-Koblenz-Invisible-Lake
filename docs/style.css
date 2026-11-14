@@ -106,3 +106,6 @@ body.film *{transition:none!important}
   #sec{left:50%;bottom:auto;top:64px}
   #secC{width:calc(100vw - 32px)}
 }
+body.film .lbl{font-size:24px}
+body.film .lbl.big{font-size:30px}
+body.film .lbl.reg{font-size:22px}
