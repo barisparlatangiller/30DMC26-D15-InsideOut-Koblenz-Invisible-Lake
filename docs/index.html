@@ -3,59 +3,86 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>The Invisible Lake · Koblenz</title>
+<title>Koblenz's Invisible Lake</title>
 <meta name="description" content="Two hours after sunset, cold air drains from the Hunsrück and Westerwald into the Rhine and Moselle valleys and fills Koblenz like a lake. 3D map from the DWD/LfU RLP cold-air model.">
-<link rel="stylesheet" href="style.css">
+<meta property="og:title" content="Koblenz's invisible lake">
+<meta property="og:description" content="Where does the cold air go after sunset? Into the valleys: 60% of Koblenz's residential land lies under 20 m or more of it.">
+<link rel="stylesheet" href="style.css?v=2">
 <script type="importmap">{"imports":{"three":"https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js","three/addons/":"https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/"}}</script>
 </head>
 <body>
-<canvas id="c"></canvas>
+<div class="app">
+  <main class="mapwrap">
+    <canvas id="c" aria-label="3D map of the cold-air lake in the Rhine and Moselle valleys at Koblenz"></canvas>
+    <div id="labels" aria-hidden="true"></div>
 
-<header id="hd">
-  <div class="kicker">#30DayMapChallenge · Day 15 · Inside out</div>
-  <h1>The Invisible Lake</h1>
-  <p class="lede">Two hours after sunset, cold air slides off the Hunsrück and Westerwald and pools in the Rhine and Moselle valleys. Koblenz sits at the bottom of a lake you cannot see.</p>
-</header>
+    <div class="card legend-card" id="legend"></div>
 
-<aside id="panel">
-  <div class="stat"><b id="sRes">–</b><span>of Koblenz's residential land lies under ≥ 20 m of cold air</span></div>
-  <div class="stat"><b id="sMax">–</b><span>deepest cold air inside the city</span></div>
+    <div class="card mapbar">
+      <div class="seg seg3 mini" id="baseSeg"><button data-b="map" class="on">Map</button><button data-b="photo">Aerial</button></div>
+      <button class="pill" id="bEck">Deutsches Eck</button>
+      <button class="pill" id="bAll">Whole valley</button>
+      <button class="pill" id="bSec">✂ Cross-section</button>
+    </div>
 
-  <div class="grp">
-    <label class="tg"><input type="checkbox" id="tLake" checked> Cold-air lake</label>
-    <label class="tg"><input type="checkbox" id="tFlow" checked> Flow (modelled speed × 300)</label>
-    <label class="tg"><input type="checkbox" id="tBld" checked> Buildings (LoD2)</label>
-    <label class="tg"><input type="checkbox" id="tRes"> Residential areas</label>
-    <label class="tg"><input type="checkbox" id="tNight"> Satellite night temperature</label>
-    <label class="tg"><input type="checkbox" id="tLeg"> Colour lake by depth (LfU legend)</label>
-  </div>
-  <div class="grp">
-    <label class="sl">Lake fill <input type="range" id="rK" min="0" max="1" step="0.01" value="1"></label>
-    <label class="sl">Transparency <input type="range" id="rOp" min="0.15" max="1" step="0.01" value="0.8"></label>
-    <label class="sl">Vertical exaggeration <span id="exv">1.8×</span><input type="range" id="rEx" min="1" max="3" step="0.1" value="1.8"></label>
-  </div>
-  <div class="grp row">
-    <button id="bSec">✂ Cross-section</button>
-    <button id="bEck">Deutsches Eck</button>
-    <button id="bAll">Whole valley</button>
-  </div>
-  <div id="legend"></div>
-</aside>
+    <div id="sec" class="card" hidden><canvas id="secC" width="760" height="220"></canvas><div class="sx"><span id="secT"></span><button id="secX" class="pill">×</button></div></div>
+    <div id="load" class="loading">Filling the valleys…</div>
+  </main>
 
-<div id="info" hidden></div>
-<div id="sec" hidden><canvas id="secC" width="760" height="220"></canvas><div class="sx"><span id="secT"></span><button id="secX">×</button></div></div>
+  <aside class="panel card" id="panel">
+    <header class="head">
+      <p class="eyebrow">#30DayMapChallenge · Day 15 · Inside out · Koblenz</p>
+      <h1>Koblenz's invisible lake</h1>
+      <p class="lede">Two hours after sunset, cold air slides off the <b>Hunsrück</b> and the <b>Westerwald</b> and pools in the Rhine and Moselle valleys. The city sits at the bottom of a lake you cannot see.</p>
+    </header>
 
-<footer id="ft">
-  Cold air: ORKA-DE 50 m model (DWD) via LfU Rheinland-Pfalz, 2 h after sunset, clear and calm night, CC BY 4.0 ·
-  Terrain DGM, buildings LoD2, land use Basis-DLM: © GeoBasis-DE / LVermGeo RP, dl-de/by-2.0 ·
-  Night surface temperature: LfU RLP Cold-/Hot-Spots, 6 Aug 2024 ·
-  Built by Barış Parlatangiller with Claude (AI) ·
-  <a href="https://github.com/barisparlatangiller/30DMC26-D15-InsideOut-Koblenz-Invisible-Lake">Code &amp; method</a>
-</footer>
+    <div class="stats">
+      <div class="st"><b class="mono" id="sRes">60%</b><span>of residential land under ≥ 20 m of cold air</span></div>
+      <div class="st"><b class="mono" id="sEck">49 m</b><span>of cold air over the Deutsches Eck</span></div>
+      <div class="st"><b class="mono" id="sMax">103 m</b><span>deepest point inside the city</span></div>
+    </div>
 
-<div id="film" hidden><div id="fq"></div><div id="fa"></div><div id="fc"></div><div id="fs"></div></div>
-<div id="load">Filling the valley…</div>
+    <section class="block" id="detail" hidden></section>
 
-<script type="module" src="app.js"></script>
+    <section class="block">
+      <h2 class="label">1 · Layers</h2>
+      <div class="toggles">
+        <label><input type="checkbox" id="tFlow" checked><span>Cold-air flow</span><em>direction and speed</em></label>
+        <label><input type="checkbox" id="tLake" checked><span>Cold-air lake</span><em>depth above ground</em></label>
+        <label><input type="checkbox" id="tBld" checked><span>Buildings</span><em>LoD2, real roofs</em></label>
+        <label><input type="checkbox" id="tTree" checked><span>Forest</span><em>trees drawn in forest areas</em></label>
+        <label><input type="checkbox" id="tCon" checked><span>Contours</span><em>20 m, bold every 100 m</em></label>
+        <label><input type="checkbox" id="tRes"><span>Residential areas</span><em>Basis-DLM</em></label>
+        <label><input type="checkbox" id="tNight"><span>Satellite night temperature</span><em>6 Aug 2024</em></label>
+      </div>
+    </section>
+
+    <section class="block">
+      <h2 class="label">2 · Lake</h2>
+      <div class="sl"><span>Fill</span><input type="range" id="rK" min="0" max="1" step="0.01" value="1"><b class="mono" id="kO">2 h</b></div>
+      <div class="sl"><span>Opacity</span><input type="range" id="rOp" min="0.15" max="1" step="0.01" value="0.68"><b class="mono" id="opO">68%</b></div>
+      <div class="sl"><span>Relief</span><input type="range" id="rEx" min="1" max="3" step="0.1" value="1.8"><b class="mono" id="exv">1.8×</b></div>
+      <p class="hint">Click anywhere for depth, flow and night temperature. ✂ draws a section through the valley.</p>
+    </section>
+
+    <details class="howto">
+      <summary>How to read this map</summary>
+      <ol>
+        <li><b>Blue haze</b> is the modelled cold-air layer, 2 h after sunset on a clear, calm night. The deeper the blue, the thicker the layer.</li>
+        <li><b>Moving streaks</b> are the cold-air flow: direction and speed from the model, shown 300× faster than real time.</li>
+        <li>On the plateaus the cold air forms and drains away, so they stay almost dry: Karthause, Ehrenbreitstein, Horchheimer Höhe.</li>
+      </ol>
+    </details>
+
+    <section class="block src">
+      <h2 class="label">Data</h2>
+      <p>Cold air: DWD ORKA-DE 50 m, via LfU Rheinland-Pfalz (CC BY 4.0). Night surface temperature: LfU RLP Cold-/Hot-Spots. Terrain DGM, LoD2, Basis-DLM, DOP20: © GeoBasis-DE / LVermGeo RP (dl-de/by-2.0). Basemap © OpenStreetMap contributors © CARTO.</p>
+      <p>Barış Parlatangiller, built with Claude · <a href="https://github.com/barisparlatangiller/30DMC26-D15-InsideOut-Koblenz-Invisible-Lake" target="_blank" rel="noopener">code &amp; method</a> · <a href="https://barisparlatangiller.github.io/" target="_blank" rel="noopener">all maps</a></p>
+    </section>
+  </aside>
+</div>
+
+<div id="film" hidden><div id="fq"></div><div id="fc"></div><div id="fa"></div><div id="fs"></div></div>
+<script type="module" src="app.js?v=2"></script>
 </body>
 </html>
