@@ -289,7 +289,7 @@ pGeo.setAttribute('color', new THREE.BufferAttribute(pCol, 4).setUsage(THREE.Dyn
 pGeo.setAttribute('size', new THREE.BufferAttribute(pSize, 1).setUsage(THREE.DynamicDrawUsage));
 const pMat = new THREE.ShaderMaterial({ transparent: true, depthWrite: false, uniforms: { scale: { value: 1 } },
   vertexShader: `attribute vec4 color; attribute float size; uniform float scale; varying vec4 vC;
-    void main(){ vC=color; vec4 mv=modelViewMatrix*vec4(position,1.); gl_PointSize=clamp(size*scale/-mv.z,1.6,5.5); gl_Position=projectionMatrix*mv; }`,
+    void main(){ vC=color; vec4 mv=modelViewMatrix*vec4(position,1.); gl_PointSize=clamp(size*scale/-mv.z,1.8,6.5); gl_Position=projectionMatrix*mv; }`,
   fragmentShader: `varying vec4 vC; void main(){ vec2 d=gl_PointCoord-0.5; float r=length(d); if(r>0.5) discard; gl_FragColor=vec4(vC.rgb,vC.a*smoothstep(0.5,0.25,r));
     #include <colorspace_fragment>
   }` });
@@ -327,7 +327,7 @@ function stepParticles(dt) {
 
 // ---------- labels ----------
 const LABELS = [
-  ['Koblenz', 399600, 5579000, 'big'], ['Deutsches Eck', 400860, 5580120, ''], ['Ehrenbreitstein', 401600, 5580300, ''],
+  ['Koblenz', 399600, 5579000, 'big'], ['Deutsches Eck', 400860, 5580120, ''], ['Ehrenbreitstein', 402350, 5580550, ''],
   ['Karthause', 398700, 5577300, ''], ['Neuwied', 390700, 5587300, ''], ['Lahnstein', 401300, 5574000, ''], ['Vallendar', 402300, 5585100, ''],
   ['Bendorf', 398600, 5587900, ''], ['Andernach', 387600, 5590800, ''], ['Winningen', 391300, 5574700, ''], ['Rhens', 397600, 5570200, ''],
   ['Rhein', 403200, 5571000, 'water'], ['Mosel', 393700, 5577300, 'water'], ['Lahn', 404400, 5573700, 'water'],
@@ -439,7 +439,7 @@ function drawSection(a, b) {
 // ---------- loop ----------
 function frame(dt) {
   S.t += dt; lakeMat.uniforms.t.value = S.t; lakeMat.uniforms.camP.value.copy(camera.position);
-  pMat.uniforms.scale.value = innerHeight * 1.0;
+  pMat.uniforms.scale.value = innerHeight * (FILM ? 1.7 : 1.0);
   if (pts.visible) stepParticles(Math.min(dt, 0.05));
   controls.update(); renderer.render(scene, camera); placeLabels();
 }

@@ -21,12 +21,14 @@ await p.evaluate(() => document.fonts.ready);
 const plan = await p.evaluate(({ FPS, FROM }) => {
   const F = window.Film, V = F.THREE.Vector3;
   const E = (e, n, z) => F.toWorld(e, n, z);
+  const TOP = (e, n, h) => [E(e, n - h * 0.02, h), E(e, n, 60)];   // straight down, north up
   const K = [ // time, camera position, target
-    [0.0, E(391200, 5556500, 12500), E(399800, 5580800, 60)],
-    [2.0, E(392400, 5559200, 10800), E(399800, 5580700, 60)],
-    [6.5, E(395300, 5568200, 4800), E(400300, 5580200, 70)],
-    [9.3, E(398300, 5577000, 1150), E(400600, 5580000, 80)],
-    [12.0, E(398750, 5577550, 950), E(400650, 5580050, 80)],
+    [0.0, ...TOP(399600, 5580200, 40000)],
+    [2.0, ...TOP(399700, 5580100, 38500)],
+    [6.8, ...TOP(400000, 5579700, 17000)],
+    [8.6, ...TOP(400350, 5579850, 7000)],
+    [11.0, E(398700, 5576700, 1500), E(400600, 5580000, 80)],
+    [12.0, E(398950, 5577050, 1250), E(400650, 5580050, 80)],
   ];
   const ease = u => u < .5 ? 4*u*u*u : 1 - Math.pow(-2*u+2, 3)/2;
   function cam(t) {
@@ -38,7 +40,7 @@ const plan = await p.evaluate(({ FPS, FROM }) => {
   window.__shot = (fr) => {
     const t = fr / FPS;
     const k = t < 2 ? 0 : t > 6.5 ? 1 : ease((t - 2)/4.5);
-    const o = { cam: cam(t), k, labels: t < 6.6 ? 1 : Math.max(0.0, 1-(t-6.6)/0.6) };
+    const o = { cam: cam(t), k, op: 0.8, labels: t < 8.8 ? 1 : Math.max(0.0, 1-(t-8.8)/0.5) };
     o.fq = '<small>Koblenz · 2 hours after sunset</small>Where does the cold air go?'; o.fqo = t < 6.6 ? 1 : Math.max(0, 1 - (t-6.6)/0.4);
     o.fc = `<b>${Math.round(HECK * k)} m</b><span>of cold air over<br>the Deutsches Eck</span>`; o.fco = t < 2.1 ? 0 : t < 9.1 ? 1 : Math.max(0, 1-(t-9.1)/0.4);
     o.fa = '<em>60%</em> of Koblenz\'s residential land lies under 20 m or more of cold air<small>The plateaus stay dry: Karthause, Ehrenbreitstein, Horchheimer Höhe</small>'; o.fao = t < 9.4 ? 0 : Math.min(1, (t-9.4)/0.4);
