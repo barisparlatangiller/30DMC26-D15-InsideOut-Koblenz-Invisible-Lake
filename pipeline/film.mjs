@@ -15,15 +15,16 @@ const LOCAL3 = process.env.THREE_DIR || '/home/claude/d15/node_modules/three/';
 if (fs.existsSync(LOCAL3)) await p.route(/cdn\.jsdelivr\.net\/npm\/three@0\.160\.0\/(.*)/, rt => rt.fulfill({ path: LOCAL3 + rt.request().url().split('three@0.160.0/')[1], contentType: 'text/javascript' }));
 await p.goto('http://localhost:8766/?film', { waitUntil: 'load' });
 await p.waitForFunction(() => window.Film && window.Film.ready, null, { timeout: 300000 });
+await p.evaluate(() => window.Film.bldReady);
 await p.evaluate(() => document.fonts.ready);
 
 const plan = await p.evaluate(({ FPS, FROM }) => {
   const F = window.Film, V = F.THREE.Vector3;
   const E = (e, n, z) => F.toWorld(e, n, z);
   const K = [ // time, camera position, target
-    [0.0, E(391800, 5559800, 10200), E(399600, 5580600, 60)],
-    [2.0, E(393300, 5562800, 8200), E(399700, 5580500, 60)],
-    [6.5, E(395600, 5569000, 4300), E(400200, 5580200, 70)],
+    [0.0, E(391200, 5556500, 12500), E(399800, 5580800, 60)],
+    [2.0, E(392400, 5559200, 10800), E(399800, 5580700, 60)],
+    [6.5, E(395300, 5568200, 4800), E(400300, 5580200, 70)],
     [9.3, E(398300, 5577000, 1150), E(400600, 5580000, 80)],
     [12.0, E(398750, 5577550, 950), E(400650, 5580050, 80)],
   ];
@@ -37,11 +38,11 @@ const plan = await p.evaluate(({ FPS, FROM }) => {
   window.__shot = (fr) => {
     const t = fr / FPS;
     const k = t < 2 ? 0 : t > 6.5 ? 1 : ease((t - 2)/4.5);
-    const o = { cam: cam(t), k, res: t > 7.6 ? Math.min(1, (t-7.6)/0.8) : 0 };
-    o.fq = 'Where does Koblenz\'s cold air go after sunset?'; o.fqo = t < 6.3 ? 1 : Math.max(0, 1 - (t-6.3)/0.4);
-    o.fc = `${Math.round(HECK * k)} m<small>of cold air over<br>the Deutsches Eck</small>`; o.fco = t < 2.1 ? 0 : t < 9.1 ? 1 : Math.max(0, 1-(t-9.1)/0.4);
-    o.fa = '<em>60%</em> of Koblenz\'s residential land<br>lies under ≥ 20 m of cold air'; o.fao = t < 9.4 ? 0 : Math.min(1, (t-9.4)/0.4);
-    o.fs = t < 9.4 ? 'Modelled cold air, 2 h after sunset on a clear, calm night · DWD ORKA-DE / LfU RLP' : 'The plateaus stay dry: Karthause, Ehrenbreitstein, Horchheimer Höhe';
+    const o = { cam: cam(t), k, labels: t < 6.6 ? 1 : Math.max(0.0, 1-(t-6.6)/0.6) };
+    o.fq = '<small>Koblenz · 2 hours after sunset</small>Where does the cold air go?'; o.fqo = t < 6.6 ? 1 : Math.max(0, 1 - (t-6.6)/0.4);
+    o.fc = `<b>${Math.round(HECK * k)} m</b><span>of cold air over<br>the Deutsches Eck</span>`; o.fco = t < 2.1 ? 0 : t < 9.1 ? 1 : Math.max(0, 1-(t-9.1)/0.4);
+    o.fa = '<em>60%</em> of Koblenz\'s residential land lies under 20 m or more of cold air<small>The plateaus stay dry: Karthause, Ehrenbreitstein, Horchheimer Höhe</small>'; o.fao = t < 9.4 ? 0 : Math.min(1, (t-9.4)/0.4);
+    o.fs = 'Modelled for a clear, calm night · DWD ORKA-DE via LfU Rheinland-Pfalz';
     F.set(o); F.step(1 / FPS);
   };
   F.warm(4);
