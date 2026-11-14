@@ -20,7 +20,7 @@ const FLOW = [[10,'#09e7ff','moderate 10–20'],[20,'#0076fe','high 20–30'],[3
 const NIGHT = [[-4,'#0850b4'],[-3,'#016bff'],[-2,'#1eb7fe'],[-1,'#b1faff'],[0,'#f4f1ea'],[1,'#ffe2a7'],[2,'#ff874b'],[3,'#ff0134'],[4,'#82000d']];
 
 if (FILM) { let a = 20261115; Math.random = () => { a |= 0; a = a + 0x6D2B79F5 | 0; let t = Math.imul(a ^ a >>> 15, 1 | a); t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t; return ((t ^ t >>> 14) >>> 0) / 4294967296; }; }
-const S = { k: 1, op: 0.68, ex: 1.8, t: 0, secMode: false, base: 'map' };
+const S = { thr: 0, k: 1, op: 0.68, ex: 1.8, t: 0, secMode: false, base: 'map' };
 window.S = S;
 
 // ---------- helpers ----------
@@ -193,20 +193,20 @@ if (baseCtx) {
 // ---------- the lake ----------
 const lakeMat = new THREE.ShaderMaterial({
   transparent: true, depthWrite: false, side: THREE.DoubleSide,
-  uniforms: { ex: { value: S.ex }, k: { value: S.k }, op: { value: S.op }, t: { value: 0 }, flowT: { value: flowTex }, light: { value: LIGHT },
+  uniforms: { ex: { value: S.ex }, k: { value: S.k }, thr: { value: 0 }, op: { value: S.op }, t: { value: 0 }, flowT: { value: flowTex }, light: { value: LIGHT },
     camP: { value: new THREE.Vector3() }, fogC: { value: FOG }, fogD: { value: FOGD } },
   vertexShader: `${COMMON} attribute float cold; uniform float k; varying float vH;
     void main(){ vUv=uv; vH=cold*k; vec3 p=position; p.y+=vH+0.6;
       vN=normalize(vec3(normal.x*ex,normal.y,normal.z*ex));
       vec4 w=modelMatrix*vec4(p,1.); vW=w.xyz; vec4 mv=viewMatrix*w; vD=-mv.z; gl_Position=projectionMatrix*mv; }`,
-  fragmentShader: `${COMMON} uniform float op,t,fogD; uniform sampler2D flowT; uniform vec3 light,camP,fogC; varying float vH;
+  fragmentShader: `${COMMON} uniform float op,t,fogD,thr; uniform sampler2D flowT; uniform vec3 light,camP,fogC; varying float vH;
     ${rampGLSL('coldRamp', RAMP)}
     float h21(vec2 p){ return fract(sin(dot(p,vec2(127.1,311.7)))*43758.5453); }
     float vn(vec2 p){ vec2 i=floor(p),f=fract(p); f=f*f*(3.-2.*f);
       return mix(mix(h21(i),h21(i+vec2(1,0)),f.x),mix(h21(i+vec2(0,1)),h21(i+vec2(1,1)),f.x),f.y); }
     float fbm(vec2 p){ return 0.55*vn(p)+0.3*vn(p*2.07)+0.15*vn(p*4.3); }
     void main(){
-      if(vH<0.6) discard;
+      if(vH<0.6 || vH<thr-1.5) discard;
       vec3 fl=texture2D(flowT,vUv).rgb; vec2 dir=fl.rg*2.-1.; float q=fl.b;
       vec2 P=vec2(vW.x,-vW.z)/260.;
       float ph=fract(t*0.08), ph2=fract(t*0.08+0.5);
@@ -217,7 +217,7 @@ const lakeMat = new THREE.ShaderMaterial({
       float fres=pow(1.-max(dot(n,V),0.),3.);
       c=c*(0.86+0.2*mist)+vec3(1.)*fres*0.18*depth;
       float a=op*(0.10+0.70*depth)*(0.88+0.25*mist);
-      a*=smoothstep(2.,12.,vH);
+      a*=smoothstep(2.,12.,vH)*smoothstep(thr-1.5,thr+2.5,vH);
       c=mix(c,fogC,smoothstep(0.,1.,vD/fogD)*0.85);
       gl_FragColor=vec4(c,clamp(a,0.,0.92));
       #include <colorspace_fragment>
@@ -309,7 +309,7 @@ function stepParticles(dt) {
   }
   let o = 0;
   for (let j = 0; j < NP; j++) {
-    const p = parts[j], fade = Math.min(1, p.age/1.0, (p.life - p.age)/1.0) * k;
+    const p = parts[j], h0 = p.tr[0] ? p.tr[0][3] : 0, fade = Math.min(1, p.age/1.0, (p.life - p.age)/1.0) * k * Math.min(1, Math.max(0, (h0 - S.thr + 2) / 4));
     for (let s = 0; s < TRAIL; s++) {
       const a = p.tr[s], b = p.tr[s+1] || a;
       for (let h2 = 0; h2 < 2; h2++, o++) {
@@ -453,6 +453,7 @@ window.Film = {
   ready: true, bldReady, THREE, camera, controls, toWorld, demAt, coldAt, S, VIEWS,
   set(o) {
     if (o.k !== undefined) { S.k = o.k; lakeMat.uniforms.k.value = o.k; }
+    if (o.thr !== undefined) { S.thr = o.thr; lakeMat.uniforms.thr.value = o.thr; }
     if (o.op !== undefined) lakeMat.uniforms.op.value = o.op;
     if (o.ex !== undefined) { S.ex = o.ex; applyEx(); }
     if (o.res !== undefined) terrainMat.uniforms.showRes.value = o.res;
@@ -463,6 +464,6 @@ window.Film = {
     for (const id of ['fq', 'fa', 'fc', 'fs']) if (o[id+'o'] !== undefined) $(id).style.opacity = o[id+'o'];
   },
   warm(sec) { for (let t = 0; t < sec; t += 1/30) stepParticles(1/30); },
-  advance(k, dt) { S.k = k; lakeMat.uniforms.k.value = k; S.t += dt; stepParticles(Math.min(dt, 0.05)); },
+  advance(k, dt, thr = 0) { S.thr = thr; lakeMat.uniforms.thr.value = thr; S.k = k; lakeMat.uniforms.k.value = k; S.t += dt; stepParticles(Math.min(dt, 0.05)); },
   step(dt) { frame(dt); }
 };

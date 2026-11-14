@@ -21,36 +21,33 @@ await p.evaluate(() => document.fonts.ready);
 const plan = await p.evaluate(({ FPS, FROM }) => {
   const F = window.Film, V = F.THREE.Vector3;
   const E = (e, n, z) => F.toWorld(e, n, z);
-  const TOP = (e, n, h) => [E(e, n - h * 0.02, h), E(e, n, 60)];   // straight down, north up
-  const K = [ // time, camera position, target
-    [0.0, ...TOP(399600, 5580200, 40000)],
-    [2.0, ...TOP(399700, 5580100, 38500)],
-    [6.8, ...TOP(400000, 5579700, 17000)],
-    [8.6, ...TOP(400350, 5579850, 7000)],
-    [11.0, E(398700, 5576700, 1500), E(400600, 5580000, 80)],
-    [12.0, E(398950, 5577050, 1250), E(400650, 5580050, 80)],
-  ];
+  const TOP = (e, n, h) => ({ p: E(e, n - h * 0.02, h), t: E(e, n, 60) });   // straight down, north up
   const ease = u => u < .5 ? 4*u*u*u : 1 - Math.pow(-2*u+2, 3)/2;
-  function cam(t) {
-    let i = 0; while (i < K.length - 2 && t > K[i+1][0]) i++;
-    const [t0, p0, a0] = K[i], [t1, p1, a1] = K[i+1], u = ease(Math.min(1, Math.max(0, (t - t0)/(t1 - t0))));
-    return { p: new V().lerpVectors(p0, p1, u), t: new V().lerpVectors(a0, a1, u) };
-  }
-  const HECK = 48.7;   // 50 m model cell at the Deutsches Eck
+  const lerp = (a, b, u) => a + (b - a) * u;
+  const OB1 = { p: E(398700, 5576700, 1500), t: E(400600, 5580000, 80) }, OB2 = { p: E(398950, 5577050, 1250), t: E(400650, 5580050, 80) };
+  const cam = t => {
+    if (t <= 8.6) { const u = ease(t / 8.6); return TOP(lerp(399700, 400250, u), lerp(5580300, 5579850, u), lerp(40000, 19000, u)); }
+    const a = TOP(400250, 5579850, 19000);
+    if (t <= 11) { const u = ease((t - 8.6) / 2.4); return { p: new V().lerpVectors(a.p, OB1.p, u), t: new V().lerpVectors(a.t, OB1.t, u) }; }
+    const u = (t - 11); return { p: new V().lerpVectors(OB1.p, OB2.p, u), t: new V().lerpVectors(OB1.t, OB2.t, u) };
+  };
+  // share of Koblenz's residential land (Basis-DLM) under ≥ x m of cold air, x = 0..120 (50 m model grid)
+  const SH = [100.0, 97.6, 97.2, 95.7, 93.5, 89.6, 86.5, 83.6, 80.5, 78.2, 75.8, 73.3, 70.9, 68.6, 66.9, 65.5, 64.0, 62.8, 61.8, 60.9, 60.0, 59.2, 58.3, 57.1, 55.9, 54.5, 52.6, 50.5, 49.1, 47.2, 45.7, 44.2, 42.7, 40.1, 36.6, 32.5, 27.7, 24.3, 21.3, 17.9, 15.6, 13.6, 12.0, 10.7, 9.6, 8.6, 7.9, 7.2, 6.7, 6.3, 5.8, 5.3, 4.8, 4.0, 3.4, 2.9, 2.5, 2.2, 1.8, 1.6, 1.3, 1.1, 1.1, 0.9, 0.8, 0.7, 0.6, 0.6, 0.5, 0.4, 0.2, 0.2, 0.1, 0.1, 0.1, 0.1, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0];
+  const share = x => { const i = Math.max(0, Math.min(119, Math.floor(x))), f = x - i; return SH[i] + (SH[i+1] - SH[i]) * f; };
+  window.__thrAt = fr => { const t = fr / FPS; if (t < 1.4) return 125; if (t > 8.4) return 20; const u = (t - 1.4) / 7; return 115 - 95 * (u < .5 ? 2*u*u : 1 - Math.pow(-2*u + 2, 2)/2); };
+  const HECK = 48.7;
   window.__shot = (fr) => {
-    const t = fr / FPS;
-    const k = t < 2 ? 0 : t > 6.5 ? 1 : ease((t - 2)/4.5);
-    const o = { cam: cam(t), k, op: 0.8, labels: t < 8.8 ? 1 : Math.max(0.0, 1-(t-8.8)/0.5) };
-    o.fq = '<small>Koblenz · 2 hours after sunset</small>Where does the cold air go?'; o.fqo = t < 6.6 ? 1 : Math.max(0, 1 - (t-6.6)/0.4);
-    o.fc = `<b>${Math.round(HECK * k)} m</b><span>of cold air over<br>the Deutsches Eck</span>`; o.fco = t < 2.1 ? 0 : t < 9.1 ? 1 : Math.max(0, 1-(t-9.1)/0.4);
-    o.fa = '<em>60%</em> of Koblenz\'s residential land lies under 20 m or more of cold air<small>The plateaus stay dry: Karthause, Ehrenbreitstein, Horchheimer Höhe</small>'; o.fao = t < 9.4 ? 0 : Math.min(1, (t-9.4)/0.4);
-    o.fs = 'Modelled for a clear, calm night · DWD ORKA-DE via LfU Rheinland-Pfalz';
+    const t = fr / FPS, thr = window.__thrAt(fr), sh = thr > 120 ? 0 : share(thr);
+    const o = { cam: cam(t), k: 1, thr, op: 0.82, labels: t < 8.8 ? 1 : Math.max(0, 1 - (t-8.8)/0.5) };
+    o.fq = '<small>Koblenz · 2 hours after sunset</small>Where does the cold air go?'; o.fqo = t < 8.8 ? 1 : Math.max(0, 1 - (t-8.8)/0.4);
+    o.fc = `<b>${Math.round(sh)}%</b><span>of residential land lies under<br>≥ ${Math.round(Math.min(thr, 120))} m of cold air</span>`; o.fco = t < 1.4 ? 0 : t < 9.0 ? 1 : Math.max(0, 1-(t-9.0)/0.4);
+    o.fa = '<em>60%</em> of Koblenz\'s residential land lies under 20 m or more of cold air<small>It drains off the Hunsrück and Westerwald. The plateaus stay dry: Karthause, Ehrenbreitstein</small>'; o.fao = t < 9.8 ? 0 : Math.min(1, (t-9.8)/0.4);
+    o.fs = 'Modelled cold air, clear and calm night · DWD ORKA-DE via LfU Rheinland-Pfalz';
     F.set(o); F.step(1 / FPS);
   };
+  F.set({ thr: 125 });
   F.warm(4);
-  // particles are deterministic (seeded); replay the frames before FROM without rendering so shards line up
-  window.__kAt = (fr) => { const t = fr / FPS; return t < 2 ? 0 : t > 6.5 ? 1 : ease((t - 2)/4.5); };
-  for (let f = 0; f < FROM; f++) F.advance(window.__kAt(f), 1 / FPS);
+  for (let f = 0; f < FROM; f++) F.advance(1, 1 / FPS, window.__thrAt(f));
   return { HECK };
 }, { FPS, FROM });
 console.log('heck', plan.HECK);
