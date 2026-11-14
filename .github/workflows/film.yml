@@ -24,7 +24,7 @@ jobs:
           THREE_DIR: ${{ github.workspace }}/node_modules/three/
           OUT: ${{ github.workspace }}/frames
         run: |
-          N=360; S=${{ matrix.shard }}; PER=15
+          N=840; S=${{ matrix.shard }}; PER=35
           FROM=$((S*PER)) TO=$(((S+1)*PER)) node pipeline/film.mjs
       - uses: actions/upload-artifact@v4
         with: { name: 'frames-${{ matrix.shard }}', path: frames, retention-days: 2 }
@@ -41,14 +41,14 @@ jobs:
           ls frames | wc -l
           ffmpeg -y -framerate 30 -i frames/f%04d.jpg -c:v libx264 -profile:v main -pix_fmt yuv420p -color_range tv \
             -vf "scale=1080:1350:out_range=tv,format=yuv420p" -preset slow -crf 19 -tag:v avc1 -movflags +faststart \
-            day15_invisible_lake_12s.mp4
+            day15_invisible_lake_28s.mp4
       - name: publish to film-media branch
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git checkout --orphan film-media
           git rm -rf -q . || true
-          cp day15_invisible_lake_12s.mp4 . 2>/dev/null || true
-          git add day15_invisible_lake_12s.mp4
+          cp day15_invisible_lake_28s.mp4 . 2>/dev/null || true
+          git add day15_invisible_lake_28s.mp4
           git commit -m "Film ${{ github.run_id }}"
           git push -f origin film-media
